@@ -16,15 +16,28 @@ function createShape(x,y,red,green,blue,alpha)
   return s
 end
 
+
+-- Create color table with red,green,blue,alpha, setColor() and compare()
+-- setColor(r,g,b,a)
+-- setColor255(r,g,b,a) - Set the color using 0-255, which is mapped to 0-1. 
 function createColor(red,green,blue,alpha)
+  if alpha==nil then alpha=1 end
   c={}
   c.red=red or 1
   c.green=green or 1
   c.blue=blue or 1
   c.alpha=alpha or 1
   c.setColor=function(self,r,g,b,a) self.red=r; self.green=g; self.blue=b; self.alpha=a end
+  c.setColor255=function(self,r,g,b,a) self.red=r/255; self.green=g/255; self.blue=b/255; self.alpha=a/255; end
   c.compare=function(self,c) return self.red==c.red and self.green==c.green and self.blue==c.blue and self.alpha==c.alpha end
+  c.components=function(self) return self.red,self.green,self.blue end
   return c
+end
+
+-- create color table using 0-255 as r,g,b,a values, which get converted to 0-1.
+function createColor255(red,green,blue,alpha)
+  if alpha==nil then alpha=255 end
+  return createColor(red/255,green/255,blue/255,alpha/255)
 end
 
 function translateShape(self,x,y)

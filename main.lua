@@ -7,6 +7,7 @@ require "player"
 require "station"
 require "particle"
 require "enemy"
+require "gui"
 
 io.stdout:setvbuf("no")
 --love.graphics.setDefaultFilter("nearest","nearest")
@@ -30,6 +31,9 @@ ammoColor=createColor(1,0,0,1)
 keystate={up=false,down=false,left=false,right=false,thrust=false,fire=false}
 print("keystate: ",keystate["up"])
 
+activeMenu=nil
+menuOne=nil
+
 function love.load()
   local joysticks = love.joystick.getJoysticks()
   joystick = joysticks[1]
@@ -38,10 +42,9 @@ function love.load()
   
   world=createWorld(4000,4000,screenWidth,screenHeight)
   
-  player=createPlayer(world.width/2,world.height/2,"ship_49.png",0.25,world.width,world.height,screenWidth/2,screenHeight/2)
+  player=createPlayer(world.width/2,world.height/2,"ship_49.png",1,world.width,world.height,screenWidth/2,screenHeight/2)
   world:addShape(player)
 --  world:addParticle(createParticle(player.x,player.y,player.angle,particleImage))
-
   
   world:addShape(createStation(world.width-screenWidth/2-75,screenHeight+75,75,9,
       healthColor.red,healthColor.green,healthColor.blue,healthColor.alpha))
@@ -57,7 +60,24 @@ function love.load()
   world:createStars(1000)
   
 --  world:addShape(createBorder(world.width/2,world.height/2,world.width,world.height))
+  
+  fontLarge=love.graphics.newImageFont("wolf-font-sheet.png",
+    "!\"#$%&'()*+,-./0123456789:;<=>?@"..
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ ")
+  fontSmall=love.graphics.newImageFont("wolf-font-sheet-small.png",
+    "!\"#$%&'()*+,-./0123456789:;<=>?@"..
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ ")
+  
+  normalColor=createColor255(3,251,255)
+  selectedColor=createColor(1,1,0)
 
+  local x=screenWidth/2-150
+  local y=screenHeight/2-200
+  local w=250
+  local h=300
+  menuOne=createMenu(nil,{"Play","Quit"},x,y,w,h,true,normalColor,selectedColor,handleMenu,fontLarge,27)
+  titlePage=createImageTitle("edgeofspacetitle.png")
+  titleShowing=true
 end
 
 function fireBullet(dt) 
@@ -77,59 +97,107 @@ function fireBullet(dt)
 end
 
 function love.keypressed(key)
+  if titleShowing then
+    -- if title, then just turn off title and continue
+    titleShowing=false
+    return
+  end
   if key == "escape" then 
-    love.event.quit() 
-  elseif key == "1" then
-    s=createEnemy(math.random(100,200),math.random(100,200),"enemy",0,0,1,1,world,player)
-    world:addShape(s)
-    print("create enemy at x,y=",s.x,s.y) 
-  elseif key == "2" then
-    player.health=player.health-10
+    if activeMenu==nil then
+      activeMenu=menuOne  -- open menu
+    else
+      activeMenu=nil      -- close menu
+    end
+  end
+  
+  if activeMenu~=nil then
+    if key=="up" then
+      activeMenu:selectPrevious()
+    elseif key=="down" then
+      activeMenu:selectNext()
+    elseif key=="return" then
+      activeMenu:handle()
+    end
+  else
+    -- process keypressed normally
+    if key == "1" then
+      s=createEnemy(math.random(100,200),math.random(100,200),"enemy",0,0,1,1,world,player)
+      world:addShape(s)
+      print("create enemy at x,y=",s.x,s.y) 
+    elseif key == "2" then
+      player.health=player.health-10
+    end
+  end
+end
+
+function handleMenu(menu)
+  local index=menu.selectedIndex
+  local text=menu.options[index]
+  print("handle menu called with menu",index,text)
+  if menu==menuOne and index==2 then
+    love.event.quit() -- user selected quit
+  else
+    activeMenu=nil    -- just close
   end
 end
 
 function love.update(dt)
-  player.fireRateTimer=player.fireRateTimer+dt
-  
-  keystate.left=false
-  keystate.right=false
-  keystate.up=false
-  keystate.down=false
-  keystate.fire=false
-  keystate.thrust=false
-  
-  if love.keyboard.isDown("a") or love.keyboard.isDown("left") then keystate.left=true end
-  if love.keyboard.isDown("d") or love.keyboard.isDown("right") then keystate.right=true end
-  if love.keyboard.isDown("w") or love.keyboard.isDown("up") then keystate.thrust=true end
-  if love.keyboard.isDown("space") or love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then keystate.fire=true end
-  
-  if joystick ~= nil then
-    local hat=joystick:getHat(1) -- c=nothing l,r,u,d for directions
-    if hat=="l" then keystate.left=true end
-    if hat=="r" then keystate.right=true end
-    if hat=="u" then keystate.up=true end
-    if hat=="d" then keystate.down=true end
+  if activeMenu~=nil then
+    activeMenu:update(dt)
+  else 
+    player.fireRateTimer=player.fireRateTimer+dt
     
-    if joystick:isDown(1) then keystate.fire=true end
-    if joystick:isDown(2) then keystate.thrust=true end
+    keystate.left=false
+    keystate.right=false
+    keystate.up=false
+    keystate.down=false
+    keystate.fire=false
+    keystate.thrust=false
+    
+    if love.keyboard.isDown("a") or love.keyboard.isDown("left") then keystate.left=true end
+    if love.keyboard.isDown("d") or love.keyboard.isDown("right") then keystate.right=true end
+    if love.keyboard.isDown("w") or love.keyboard.isDown("up") then keystate.thrust=true end
+    if love.keyboard.isDown("space") or love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then 
+      keystate.fire=true 
+    end
+    
+    if joystick~=nil then
+      local hat=joystick:getHat(1) -- c=nothing l,r,u,d for directions
+      if hat=="l" then keystate.left=true end
+      if hat=="r" then keystate.right=true end
+      if hat=="u" then keystate.up=true end
+      if hat=="d" then keystate.down=true end
+      
+      if joystick:isDown(1) then keystate.fire=true end
+      if joystick:isDown(2) then keystate.thrust=true end
+    end
+    
+    if keystate.fire then fireBullet(dt) end
+    world:update(dt)
   end
-  
-  if keystate.fire then fireBullet(dt) end
-  world:update(dt)
 end
 
 function love.draw()
-  world:draw(player.x,player.y)
-  showInfo()
+  if titleShowing then
+    titlePage:draw()
+  else
+    world:draw(player.x,player.y)
+    showInfo()
+    frame(screenWidth,screenHeight)
+    if activeMenu~=nil then
+      activeMenu:draw()
+    end
+  end
 end
 
 function showInfo()
   love.graphics.setColor(1,0,0,1)
+  love.graphics.setFont(fontSmall)
   local statsWidth=150
   local statsHeight=200
   local x=screenWidth-statsWidth
   local y=0
-  love.graphics.rectangle("line",1,0,love.graphics.getWidth()-1,love.graphics.getHeight()-1)
+--  love.graphics.rectangle("line",1,0,love.graphics.getWidth()-1,love.graphics.getHeight()-1)
 
 --  drawCrosshair(love.graphics.getWidth()/2,love.graphics.getHeight()/2)
   drawFrame(x,y,statsWidth,statsHeight)
