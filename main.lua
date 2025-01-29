@@ -32,7 +32,9 @@ keystate={up=false,down=false,left=false,right=false,thrust=false,fire=false}
 print("keystate: ",keystate["up"])
 
 activeMenu=nil
-menuOne=nil
+menuMain=nil
+menuMultiplayer=nil
+menuHelp=nil
 
 function love.load()
   local joysticks = love.joystick.getJoysticks()
@@ -75,7 +77,15 @@ function love.load()
   local y=screenHeight/2-200
   local w=250
   local h=300
-  menuOne=createMenu(nil,{"Play","Quit"},x,y,w,h,true,normalColor,selectedColor,handleMenu,fontLarge,27)
+  local menuWindowed=false
+  menuMain=createMenu("Edge of Space",{"Single Player","Multiplayer","Credits","Quit"},
+    x,y,w,h,menuWindowed,normalColor,selectedColor,handleMenuMain,fontLarge,27)
+  menuSinglePlayer=createMenu("Single Player",{"New Game","Load Game","Back"},
+    x,y,w,h,menuWindowed,normalColor,selectedColor,handleMenuSinglePlayer,fontLarge,27)
+  menuMultiplayer=createMenu("Multiplayer",{"Connect","Host","Back"},
+    x,y,w,h,menuWindowed,normalColor,selectedColor,handleMenuMultiplayer,fontLarge,27)
+  menuHelp=createMenu("Controls",{"A/D or Left/Right to Rotate","W or Up to Thrust","Space/Ctrl to Fire","Play"},
+    x,y,w,h,menuWindowed,normalColor,selectedColor,handleMenuHelp,fontLarge,27)
   titlePage=createImageTitle("edgeofspacetitle.png")
   titleShowing=true
 end
@@ -104,7 +114,7 @@ function love.keypressed(key)
   end
   if key == "escape" then 
     if activeMenu==nil then
-      activeMenu=menuOne  -- open menu
+      activeMenu=menuMain  -- open menu
     else
       activeMenu=nil      -- close menu
     end
@@ -130,15 +140,49 @@ function love.keypressed(key)
   end
 end
 
-function handleMenu(menu)
+-- Main menu handler
+function handleMenuMain(menu)
   local index=menu.selectedIndex
   local text=menu.options[index]
   print("handle menu called with menu",index,text)
-  if menu==menuOne and index==2 then
+  if text=="Quit" then
     love.event.quit() -- user selected quit
-  else
-    activeMenu=nil    -- just close
+  elseif text=="Single Player" then
+    activeMenu=menuSinglePlayer
+  elseif text=="Multiplayer" then
+    activeMenu=menuMultiplayer
   end
+end
+
+function handleMenuSinglePlayer(menu)
+  local index=menu.selectedIndex
+  local text=menu.options[index]
+  if text=="New Game" then 
+    activeMenu=menuHelp
+    menuHelp.selectedIndex=#menuHelp.options
+  elseif text=="Load Game" then
+    activeMenu=nil
+  elseif text=="Back" then 
+    activeMenu=menuMain
+  end
+end
+
+function handleMenuMultiplayer(menu)
+  local index=menu.selectedIndex
+  local text=menu.options[index]
+  if text=="Connect" then 
+    print("Player wants to connect to remote host")
+    activeMenu=menuMain
+  elseif text=="Host" then
+    print("Player wants to host a game")
+    activeMenu=menuMain
+  elseif text=="Back" then 
+    activeMenu=menuMain
+  end
+end
+
+function handleMenuHelp(menu)
+  activeMenu=nil
 end
 
 function love.update(dt)

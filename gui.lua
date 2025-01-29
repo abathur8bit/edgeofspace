@@ -59,7 +59,7 @@ function menuDraw(self)
       offset=self.offset
       window(x,y,self.w,self.h)
     end
-    crosshair(x,y,1,0,0,1)
+    -- crosshair(x,y,1,0,0,1)
     x=x+offset
     y=y+offset
     if self.font~=nil then love.graphics.setFont(self.font) end
